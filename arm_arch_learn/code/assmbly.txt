@@ -1,0 +1,80 @@
+
+test.o:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+00000000 <mem_clr>:
+   0:	e3510000 	cmp	r1, #0
+   4:	d12fff1e 	bxle	lr
+   8:	e0801001 	add	r1, r0, r1
+   c:	e3a03000 	mov	r3, #0
+  10:	e4c03001 	strb	r3, [r0], #1
+  14:	e1510000 	cmp	r1, r0
+  18:	1afffffc 	bne	10 <mem_clr+0x10>
+  1c:	e12fff1e 	bx	lr
+
+00000020 <check_sum_v1>:
+  20:	e2403004 	sub	r3, r0, #4
+  24:	e2801ffe 	add	r1, r0, #1016	; 0x3f8
+  28:	e3a00000 	mov	r0, #0
+  2c:	e5b32004 	ldr	r2, [r3, #4]!
+  30:	e0820000 	add	r0, r2, r0
+  34:	e1a00800 	lsl	r0, r0, #16
+  38:	e1a00840 	asr	r0, r0, #16
+  3c:	e1530001 	cmp	r3, r1
+  40:	1afffff9 	bne	2c <check_sum_v1+0xc>
+  44:	e12fff1e 	bx	lr
+
+00000048 <avg_test>:
+  48:	e0800001 	add	r0, r0, r1
+  4c:	e0800fa0 	add	r0, r0, r0, lsr #31
+  50:	e1a000c0 	asr	r0, r0, #1
+  54:	e12fff1e 	bx	lr
+
+00000058 <avg_test_unsigned>:
+  58:	e0800001 	add	r0, r0, r1
+  5c:	e1a000a0 	lsr	r0, r0, #1
+  60:	e12fff1e 	bx	lr
+
+00000064 <check_sum_v2>:
+  64:	e2803b01 	add	r3, r0, #1024	; 0x400
+  68:	e2801004 	add	r1, r0, #4
+  6c:	e3a00000 	mov	r0, #0
+  70:	e5332004 	ldr	r2, [r3, #-4]!
+  74:	e0800002 	add	r0, r0, r2
+  78:	e1530001 	cmp	r3, r1
+  7c:	1afffffb 	bne	70 <check_sum_v2+0xc>
+  80:	e12fff1e 	bx	lr
+
+00000084 <check_sum_v3>:
+  84:	e1a03000 	mov	r3, r0
+  88:	e2801fff 	add	r1, r0, #1020	; 0x3fc
+  8c:	e3a00000 	mov	r0, #0
+  90:	e4932004 	ldr	r2, [r3], #4
+  94:	e0800002 	add	r0, r0, r2
+  98:	e1510003 	cmp	r1, r3
+  9c:	1afffffb 	bne	90 <check_sum_v3+0xc>
+  a0:	e12fff1e 	bx	lr
+
+000000a4 <check_sum_v4>:
+  a4:	e1a03000 	mov	r3, r0
+  a8:	e3510000 	cmp	r1, #0
+  ac:	0a000005 	beq	c8 <check_sum_v4+0x24>
+  b0:	e3a00000 	mov	r0, #0
+  b4:	e4932004 	ldr	r2, [r3], #4
+  b8:	e0800002 	add	r0, r0, r2
+  bc:	e2511001 	subs	r1, r1, #1
+  c0:	1afffffb 	bne	b4 <check_sum_v4+0x10>
+  c4:	e12fff1e 	bx	lr
+  c8:	e3a00000 	mov	r0, #0
+  cc:	e12fff1e 	bx	lr
+
+000000d0 <check_sum_v5>:
+  d0:	e1a03000 	mov	r3, r0
+  d4:	e3a00000 	mov	r0, #0
+  d8:	e4932004 	ldr	r2, [r3], #4
+  dc:	e0800002 	add	r0, r0, r2
+  e0:	e2511001 	subs	r1, r1, #1
+  e4:	1afffffb 	bne	d8 <check_sum_v5+0x8>
+  e8:	e12fff1e 	bx	lr
