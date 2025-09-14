@@ -1,5 +1,8 @@
 # ARM架构高效C编程labs
 实验环境 arm-linux-gnueabi-gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
+寄存器说明
+![alt text](image.png)
+
 ## 1. 测试8bit与32bit的O2优化
 代码与流程
 C语言片段1
