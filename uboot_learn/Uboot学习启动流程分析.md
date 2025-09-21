@@ -1,5 +1,6 @@
 # 文件与作用
 |文件|作用|
+|---|---|
 |u-boot.lds|链接脚本文件,定义各个段的大小与放置位置|
 |u-boot.map|可以查看某个文件或者函数链接到了哪个地址|
 
@@ -502,4 +503,87 @@ ENDPROC(_main)
 board_init_f_alloc_reserve将SP指针对齐到16bit,执行时的寄存器情况如下
 |阶段|reg|值|
 |-|-|-|
-|SP对齐|x0|0x42000000|
+|SP对齐|x0|CONFIG_CUSTOM_SYS_INIT_SP_ADDR定义的0x42000000|
+|SP对齐|sp|对齐后的0x42000000|
+|board_init_f_alloc_reserve|x0,sp|top = rounddown(top-sizeof(struct global_data), 16)分配完地址之后的0x401fde70|
+
+之后的_debug_uart_init将会初始化串口，通过CONFIG_DEBUG_UART_BASE传入的地址与CONFIG_DEBUG_UART的具体型号初始化串口。board_init_f。经过一系列的GD结构初始化之后会跳转到relocate_code，定义如下
+```asm
+ENTRY(relocate_code)
+	stp	x29, x30, [sp, #-32]!	/* create a stack frame */
+	mov	x29, sp
+	str	x0, [sp, #16]
+	/*
+	 * Copy u-boot from flash to RAM
+	 */
+	adrp	x1, __image_copy_start		/* x1 <- address bits [31:12] */
+	add	x1, x1, :lo12:__image_copy_start/* x1 <- address bits [11:00] */
+	subs	x9, x0, x1			/* x9 <- Run to copy offset */
+	b.eq	relocate_done			/* skip relocation */
+	/*
+	 * Don't ldr x1, __image_copy_start here, since if the code is already
+	 * running at an address other than it was linked to, that instruction
+	 * will load the relocated value of __image_copy_start. To
+	 * correctly apply relocations, we need to know the linked value.
+	 *
+	 * Linked &__image_copy_start, which we know was at
+	 * CONFIG_TEXT_BASE, which is stored in _TEXT_BASE, as a non-
+	 * relocated value, since it isn't a symbol reference.
+	 */
+	ldr	x1, _TEXT_BASE		/* x1 <- Linked &__image_copy_start */
+	subs	x9, x0, x1		/* x9 <- Link to copy offset */
+
+	adrp	x1, __image_copy_start		/* x1 <- address bits [31:12] */
+	add	x1, x1, :lo12:__image_copy_start/* x1 <- address bits [11:00] */
+	adrp	x2, __image_copy_end		/* x2 <- address bits [31:12] */
+	add	x2, x2, :lo12:__image_copy_end	/* x2 <- address bits [11:00] */
+copy_loop:
+	ldp	x10, x11, [x1], #16	/* copy from source address [x1] */
+	stp	x10, x11, [x0], #16	/* copy to   target address [x0] */
+	cmp	x1, x2			/* until source end address [x2] */
+	b.lo	copy_loop
+	str	x0, [sp, #24]
+
+	/*
+	 * Fix .rela.dyn relocations
+	 */
+	adrp	x2, __rel_dyn_start		/* x2 <- address bits [31:12] */
+	add	x2, x2, :lo12:__rel_dyn_start	/* x2 <- address bits [11:00] */
+	adrp	x3, __rel_dyn_end		/* x3 <- address bits [31:12] */
+	add	x3, x3, :lo12:__rel_dyn_end	/* x3 <- address bits [11:00] */
+fixloop:
+	ldp	x0, x1, [x2], #16	/* (x0,x1) <- (SRC location, fixup) */
+	ldr	x4, [x2], #8		/* x4 <- addend */
+	and	x1, x1, #0xffffffff
+	cmp	x1, #R_AARCH64_RELATIVE
+	bne	fixnext
+
+	/* relative fix: store addend plus offset at dest location */
+	add	x0, x0, x9
+	add	x4, x4, x9
+	str	x4, [x0]
+fixnext:
+	cmp	x2, x3
+	b.lo	fixloop
+
+relocate_done:
+	switch_el x1, 3f, 2f, 1f
+	bl	hang
+3:	mrs	x0, sctlr_el3
+	b	0f
+2:	mrs	x0, sctlr_el2
+	b	0f
+1:	mrs	x0, sctlr_el1
+0:	tbz	w0, #2, 5f	/* skip flushing cache if disabled */
+	tbz	w0, #12, 4f	/* skip invalidating i-cache if disabled */
+	ic	iallu		/* i-cache invalidate all */
+	isb	sy
+4:	ldp	x0, x1, [sp, #16]
+	bl	__asm_flush_dcache_range
+	bl     __asm_flush_l3_dcache
+5:	ldp	x29, x30, [sp],#32
+	ret
+ENDPROC(relocate_code)
+
+```
+
